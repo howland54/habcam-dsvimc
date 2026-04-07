@@ -262,12 +262,11 @@ gpgga_t	parse_gngns(char *input_string, bool ignoreTheChecksum)
                   {  // the checksum is valid
 
                      // parse the gpgga
-                     int	utc_hrs,utc_mins,latd,lond,nsat;
-                     double	utc_secs,latmin,lonmin,hdop,alt;
-                     char		le_or_w,ln_or_s,altunits;
+                     int	utc_hrs,utc_mins,latd,lond;
+                     double	utc_secs,latmin,lonmin;
+                     char		le_or_w,ln_or_s;
                      int      n_or_s,e_or_w;
-                     char msgType[128];
-                     items = sscanf(input_string,"$GNGNS,%2d%2d%lf,%2d%lf,%c,%3d%lf,%c,%d,%lf,%lf,%c,",
+                     items = sscanf(input_string,"$GNGNS,%2d%2d%lf,%2d%lf,%c,%3d%lf,%c",
                                     &utc_hrs,&utc_mins,&utc_secs,&latd,&latmin,&ln_or_s,&lond,&lonmin,&le_or_w);
 
                      if(items != 9)

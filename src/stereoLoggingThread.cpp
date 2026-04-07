@@ -61,7 +61,7 @@ pthread_mutex_t jpegMutex[2];
 
 bool stereoWriteResult;
 
-static float gwml, gwma, gwmb;
+//static float gwml, gwma, gwmb;
  long int leftCount, rightCount;
 
 //int makeTimeString (double total_secs, char *str, char *prefix, char *suffix);
@@ -187,7 +187,7 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
     theStereoEvent.imageState = 0;
     image::image_t leftImageToPublish;
     image::image_t rightImageToPublish;
-    int whichCamera = 0;
+
     bool sendToConstancyThread = false;
 
     color_correction::gray_world b1;
@@ -200,8 +200,6 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
 
     if(channel == avtCameras[leftCameraID].lcmChannelName)
         {
-            whichCamera = 0;
-
             leftTime = image->utime;
             //workingImage = cv::Mat(image->height, image->width, CV_16UC1, (void *)image->data.data());
             workingImage = cv::Mat(image->height, image->width, CV_8UC1, (void *)image->data.data());
@@ -217,7 +215,7 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
             //cv::normalize(leftImage,leftNormalizedImage,0, 255,cv::NORM_MINMAX);
 
             cv::cvtColor(leftImage,leftColorImage,cv::COLOR_BayerBG2BGR,0);
-            if((totalImageCount % constancyCount ) == 0)
+            if(sendToConstancyThread)
                 {
                     //b1.preprocess(leftColorImage,1,2,&gwml, &gwma, &gwmb);
                   // check on the mutex constancyMutex
@@ -287,7 +285,6 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
         }
     else
         {
-            whichCamera = 1;
 
             rightTime = image->utime;
             //workingImage = cv::Mat(image->height, image->width, CV_16UC1, (void *)image->data.data());
@@ -481,8 +478,7 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
                     //Now writing image to the file one strip at a timeif (description)
 
 
-                    //int numChars = makeTimeString(thePairTime,imageTimeString,recordingPrefix, "tif");
-                    int numChars = makeTimeString(thePairTime,year, month+1, day, hour,minute, secs, milliseconds, imageTimeString,recordingPrefix, "tif");
+                    makeTimeString(thePairTime,year, month+1, day, hour,minute, secs, milliseconds, imageTimeString,recordingPrefix, "tif");
                     cv::Mat stereoImage = cv::Mat(image->height, image->width*2, CV_8UC1);
                     cv::hconcat(leftImage,rightImage,stereoImage);
 
@@ -498,7 +494,7 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
                                 */
                     snprintf(imageName,767,"%s/%s",theDataDir,imageTimeString);
 
-                    //int theImageWidthBytes = image->width * 4;
+
                     int theImageWidthBytes = image->width * 2;
                     int stereoTiffSuccess = 0;
                     TIFF *out= TIFFOpen(imageName, "w");
@@ -507,7 +503,6 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
                             TIFFSetField (out, TIFFTAG_IMAGEWIDTH, image->width*2);  // set the width of the image
                             TIFFSetField(out, TIFFTAG_IMAGELENGTH, image->height);    // set the height of the image
                             TIFFSetField(out, TIFFTAG_SAMPLESPERPIXEL, 1);   // set number of channels per pixel
-                            //TIFFSetField(out, TIFFTAG_BITSPERSAMPLE, 16);    // set the size of the channels
                             TIFFSetField(out, TIFFTAG_BITSPERSAMPLE, 8);    // set the size of the channels
                             TIFFSetField(out, TIFFTAG_ORIENTATION, ORIENTATION_TOPLEFT);    // set the origin of the image.
                             //   Some other essential fields to set that you do not have to understand for now.
@@ -515,10 +510,7 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
                             TIFFSetField(out, TIFFTAG_PHOTOMETRIC, PHOTOMETRIC_MINISBLACK);
                             TIFFSetField(out, TIFFTAG_COMPRESSION, COMPRESSION_NONE);
 
-
-
                             unsigned char *buf = NULL;        // buffer used to store the row of pixel information for writing to file
-
 
                             // We set the strip size of the file to be size of one row of pixels
                             TIFFSetField(out, TIFFTAG_ROWSPERSTRIP, TIFFDefaultStripSize(out, 1));
@@ -554,17 +546,20 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
                                     fflush(tenMinuteLogFile);
                                 }
 
-
                         }
                     else
                         {
                             stereoTiffSuccess = 0;
                         }
                     stereoWriteResult = stereoTiffSuccess;
-                    // jpeg savings goes here
+                    // jpeg savings goes here--except we dont save here, we just send a msg to a separate thread
 
                     for(int cameraNumber = 0; cameraNumber < nOfAvtCameras; cameraNumber++)
                        {
+                          if(avtCameras[cameraNumber].doNotUseInStereoLogging)
+                             {
+                                continue;
+                             }
                           if(avtCameras[cameraNumber].saveJPG)
                               {
                                 if(!(jpgCount[cameraNumber] % avtCameras[cameraNumber].jpgSkip))
@@ -595,7 +590,7 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
 
                                       pthread_mutex_unlock(&(jpegMutex[cameraNumber]));
                                       msg_send(JPEG_THREAD, STEREO_LOGGING_THREAD, WJPG,sizeof(int),&cameraNumber);
- #if 0
+ #if 0 // take this stuff into a separate thread
                                       if(dayOfYear != lastJPEGS[cameraNumber].lastDayOfYear)
                                          {
                                             needANewJPGDirectory[cameraNumber] = true;
@@ -698,11 +693,6 @@ void stereoCallback(const lcm::ReceiveBuffer *rbuf, const std::string& channel,c
 
         }
 
-
-
-
-
-
 }
 
 
@@ -790,8 +780,7 @@ int makeTimeString (double total_secs, int year, int month, int monthDay, int ho
 void *stereoLoggingThread (void *)
 {
 
-    msg_hdr_t hdr = { 0 };
-    unsigned char data[MSG_DATA_LEN_MAX] = { 0 };
+
     lcm::LCM stereoLcm("udpm://239.255.76.67:7667?ttl=0");
     State state;
     tenMinuteLogFile = NULL;
@@ -828,8 +817,8 @@ void *stereoLoggingThread (void *)
     ::atexit(Exiv2::XmpParser::terminate);
 
     // wakeup message
-    printf ("LOGGING_THREAD (thread %d) initialized \n", LOGGING_THREAD);
-    printf ("LOGGING_THREAD File %s compiled at %s on %s\n", __FILE__, __TIME__, __DATE__);
+    printf ("Stereo LOGGING_THREAD (thread %d) initialized \n", LOGGING_THREAD);
+    printf ("Stereo LOGGING_THREAD File %s compiled at %s on %s\n", __FILE__, __TIME__, __DATE__);
 
     IniFile  *iniFile = new IniFile();
     int okINI = iniFile->openIni(flyIniFile);

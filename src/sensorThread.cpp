@@ -46,7 +46,7 @@ extern lcm::LCM myLcm;
 // ----------------------------------------------------------------------
 // sensor data structure
 // ----------------------------------------------------------------------
-static sensor_t sensor = { 0 };
+//static sensor_t sensor = { 0 };
 
 launched_timer_data_t * update_timer = NULL;
 

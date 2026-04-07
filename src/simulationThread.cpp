@@ -84,6 +84,7 @@ void *simulationThread (void *)
     double attitudeRate = DEFAULT_ATTITUDE_RATE;
     double gpsRate = DEFAULT_GPS_RATE;
     double fathometerRate = DEFAULT_FATHOMETER_RATE;
+    int imageCount = 2;
 
     char *imageFileName = NULL;
     char *ctdChannelName = NULL;
@@ -113,6 +114,7 @@ void *simulationThread (void *)
                     imageFileName = strdup(scratchString);
                     free(scratchString);
                 }
+            imageCount = iniFile->readInt("SIMULATION","CAMERA_COUNT", 2);
             imageFrameRate = iniFile->readDouble("SIMULATION", "IMAGE_FRAME_RATE", DEFAULT_IMAGE_FRAME_RATE);
             ctdRate = iniFile->readDouble("SIMULATION", "CTD_RATE", DEFAULT_CTD_RATE);
             altimeterRate = iniFile->readDouble("SIMULATION", "ALTIMETER_RATE", DEFAULT_ALTIMETER_RATE);
@@ -141,16 +143,18 @@ void *simulationThread (void *)
     cv::Mat  image = cv::imread(imageFileName,-1);
     cv::Mat  leftImage;
     cv::Mat  rightImage;
+    int theRows = image.rows;
+    int theCols = image.cols/2;
 
-    leftImage.create(image.rows, image.cols/2, CV_8UC1);
+    leftImage.create(theRows, theCols, CV_8UC1);
     rightImage.create(image.rows, image.cols/2, CV_8UC1);
 
-    for(int j = 0; j < image.rows; j++)
+    for(int j = 0; j < theRows; j++)
         {
-            for (int k = 0; k < image.cols/2; k++)
+            for (int k = 0; k < theCols; k++)
             {
                 leftImage.at<unsigned char>(j,k) = image.at<unsigned char>(j,k);
-                rightImage.at<unsigned char>(j,k) = image.at<unsigned char>(j,k + image.cols/2);
+                rightImage.at<unsigned char>(j,k) = image.at<unsigned char>(j,k + theCols);
             }
         }
 
@@ -250,6 +254,11 @@ void *simulationThread (void *)
 
                                 int success = myLcm.publish(avtCameras[0].lcmChannelName,&leftImageToPublish);
                                 printf(".");
+                                if(imageCount < 2)
+                                   {
+                                      break;
+                                   }
+
                                 rov_time_t rightImageTime = rov_get_time();
                                 rightImageToPublish.utime =(long int)( 1000.0 * rightImageTime);
                                 success = myLcm.publish(avtCameras[1].lcmChannelName,&rightImageToPublish);
