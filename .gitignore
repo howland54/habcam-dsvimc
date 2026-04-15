@@ -1,5 +1,5 @@
 #executable
-vimc
+build/vimc
 # C++ objects and libs
 *.slo
 *.lo
