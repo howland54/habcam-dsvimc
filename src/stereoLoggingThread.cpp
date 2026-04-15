@@ -870,6 +870,11 @@ void *stereoLoggingThread (void *)
                                     exit(-1);
                                 }
                         }
+                    else if (access(imgRoot, W_OK) != 0)
+                        {
+                            printf("STEREO_IMG_ROOT %S IS NOT WRITEABLE...EXITING\N",imgRoot);
+                            exit(-1);
+                        }
 
                 }
             makeTenMinuteLogFiles = (bool)iniFile->readInt("GENERAL","MAKE_TEN_MINUTE_LOG_FILES",0);
