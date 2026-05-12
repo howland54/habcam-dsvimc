@@ -234,7 +234,7 @@ process_net_msg (sensor_t * sensor, msg_hdr_t * in_hdr, char *in_data)
 
                                 }
 
-                            else if((!strncmp(command, "$GPGGA",6)) || (!strncmp(command, "$GNGNS",6)))
+                            else if((!strncmp(command, "$GPGGA",6)) || (!strncmp(command, "$GNGNS",6))| (!strncmp(command, "$HEGGA",6)))
                                 {
                                     int ignoreGPSChecksum = FALSE;
                                     gpgga_t  gpg = parse_gpgga(command,ignoreGPSChecksum);

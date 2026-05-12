@@ -177,7 +177,7 @@ gpgga_t	parse_gpgga(char *input_string, bool ignoreTheChecksum)
                                     &utc_hrs,&utc_mins,&utc_secs,&latd,&latmin,&ln_or_s,&lond,&lonmin,&le_or_w,
                                     &nsat,&hdop,&alt,&altunits);
 
-                     if(items != 13)
+                     if(items < 13)
                         {
 
                              return return_gpgga;
